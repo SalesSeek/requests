@@ -20,7 +20,7 @@ from .cookies import cookiejar_from_dict, get_cookie_header
 from .packages.urllib3.filepost import encode_multipart_formdata
 from .exceptions import HTTPError, RequestException, MissingSchema, InvalidURL
 from .utils import (
-    stream_untransfer, guess_filename, requote_uri,
+    stream_untransfer, guess_filename, get_auth_from_url, requote_uri,
     stream_decode_response_unicode, to_key_val_list, parse_header_links,
     iter_slices, guess_json_utf, super_len)
 from .compat import (
@@ -220,9 +220,10 @@ class Request(RequestHooksMixin):
         p.prepare_headers(self.headers)
         p.prepare_cookies(self.cookies)
         p.prepare_body(self.data, self.files)
+        p.prepare_auth(self.auth, self.url)
         # Note that prepare_auth must be last to enable authentication schemes
         # such as OAuth to work on a fully prepared request.
-        p.prepare_auth(self.auth)
+
         # This MUST go after prepare_auth. Authenticators could add a hook
         p.prepare_hooks(self.hooks)
 
@@ -395,8 +396,14 @@ class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):
         elif self.method not in ('GET', 'HEAD'):
             self.headers['Content-Length'] = '0'
 
-    def prepare_auth(self, auth):
+    def prepare_auth(self, auth, url=''):
         """Prepares the given HTTP auth data."""
+
+        # If no Auth is explicitly provided, extract it from the URL first.
+        if auth is None:
+            url_auth = get_auth_from_url(self.url)
+            auth = url_auth if any(url_auth) else None
+
         if auth:
             if isinstance(auth, tuple) and len(auth) == 2:
                 # special-case basic HTTP auth
@@ -504,10 +511,11 @@ class Response(object):
         return chardet.detect(self.content)['encoding']
 
     def iter_content(self, chunk_size=1, decode_unicode=False):
-        """Iterates over the response data.  This avoids reading the content
-        at once into memory for large responses.  The chunk size is the number
-        of bytes it should read into memory.  This is not necessarily the
-        length of each item returned as decoding can take place.
+        """Iterates over the response data.  When stream=True is set on the
+        request, this avoids reading the content at once into memory for
+        large responses.  The chunk size is the number of bytes it should
+        read into memory.  This is not necessarily the length of each item
+        returned as decoding can take place.
         """
         if self._content_consumed:
             # simulate reading small chunks of the content
@@ -529,9 +537,9 @@ class Response(object):
         return gen
 
     def iter_lines(self, chunk_size=ITER_CHUNK_SIZE, decode_unicode=None):
-        """Iterates over the response data, one line at a time.  This
-        avoids reading the content at once into memory for large
-        responses.
+        """Iterates over the response data, one line at a time.  When
+        stream=True is set on the request, this avoids reading the
+        content at once into memory for large responses.
         """
 
         pending = None
