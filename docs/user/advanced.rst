@@ -75,8 +75,42 @@ request, and then the request's headers::
 
     >>> r.request.headers
     {'Accept-Encoding': 'identity, deflate, compress, gzip',
-    'Accept': '*/*', 'User-Agent': 'python-requests/0.13.1'}
+    'Accept': '*/*', 'User-Agent': 'python-requests/1.2.0'}
 
+Prepared Requests
+-----------------
+
+Whenever you receive a :class:`Response <requests.models.Response>` object
+from an API call or a Session call, the ``request`` attribute is actually the
+``PreparedRequest`` that was used. In some cases you may wish to do some extra
+work to the body or headers (or anything else really) before sending a
+request. The simple recipe for this is the following::
+
+    from requests import Request, Session
+
+    s = Session()
+    prepped = Request('GET',  # or any other method, 'POST', 'PUT', etc.
+                      url,
+                      data=data
+                      headers=headers
+                      # ...
+                      ).prepare()
+    # do something with prepped.body
+    # do something with prepped.headers
+    resp = s.send(prepped,
+                  stream=stream,
+                  verify=verify,
+                  proxies=proxies,
+                  cert=cert,
+                  timeout=timeout,
+                  # etc.
+                  )
+    print(resp.status_code)
+
+Since you are not doing anything special with the ``Request`` object, you
+prepare it immediately and modified the ``PreparedRequest`` object. You then
+send that with the other parameters you would have sent to ``requests.*`` or
+``Sesssion.*``.
 
 SSL Cert Verification
 ---------------------
@@ -93,7 +127,7 @@ I don't have SSL setup on this domain, so it fails. Excellent. Github does thoug
 
 You can also pass ``verify`` the path to a CA_BUNDLE file for private certs. You can also set the ``REQUESTS_CA_BUNDLE`` environment variable.
 
-Requests can also ignore verifying the SSL certficate if you set ``verify`` to False.
+Requests can also ignore verifying the SSL certificate if you set ``verify`` to False.
 
 ::
 
@@ -242,14 +276,15 @@ APIs such as the `Twitter Streaming API <https://dev.twitter.com/docs/streaming-
 
 To use the Twitter Streaming API to track the keyword "requests"::
 
-    import requests
     import json
+    import requests
 
-    r = requests.post('https://stream.twitter.com/1/statuses/filter.json',
-        data={'track': 'requests'}, auth=('username', 'password'), stream=True)
+    r = requests.post('http://httpbin.org/stream/20', stream=True)
 
     for line in r.iter_lines():
-        if line: # filter out keep-alive new lines
+
+        # filter out keep-alive new lines
+        if line:
             print json.loads(line)
 
 
@@ -502,4 +537,40 @@ Requests will automatically parse these link headers and make them easily consum
 
     >>> r.links["last"]
     {'url': 'https://api.github.com/users/kennethreitz/repos?page=7&per_page=10', 'rel': 'last'}
+
+Transport Adapters
+------------------
+
+As of v1.0.0, Requests has moved to a modular internal design. Part of the
+reason this was done was to implement Transport Adapters, originally
+`described here`_. Transport Adapters provide a mechanism to define interaction
+methods for an HTTP service. In particular, they allow you to apply per-service
+configuration.
+
+Requests ships with a single Transport Adapter, the
+:class:`HTTPAdapter <requests.adapters.HTTPAdapter>`. This adapter provides the
+default Requests interaction with HTTP and HTTPS using the powerful `urllib3`_
+library. Whenever a Requests :class:`Session <Session>` is initialized, one of
+these is attached to the :class:`Session <Session>` object for HTTP, and one
+for HTTPS.
+
+Requests enables users to create and use their own Transport Adapters that
+provide specific functionality. Once created, a Transport Adapter can be
+mounted to a Session object, along with an indication of which web services
+it should apply to.
+
+::
+
+    >>> s = requests.Session()
+    >>> s.mount('http://www.github.com', MyAdapter())
+
+The mount call registers a specific instance of a Transport Adapter to a
+prefix. Once mounted, any HTTP request made using that session whose URL starts
+with the given prefix will use the given Transport Adapter.
+
+Implementing a Transport Adapter is beyond the scope of this documentation, but
+a good start would be to subclass the ``requests.adapters.BaseAdapter`` class.
+
+.. _`described here`: http://kennethreitz.org/exposures/the-future-of-python-http
+.. _`urllib3`: https://github.com/shazow/urllib3
 

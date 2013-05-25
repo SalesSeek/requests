@@ -123,3 +123,8 @@ Patches and Suggestions
 - Denis Ryzhkov <denisr@denisr.com>
 - Wilfred Hughes <me@wilfred.me.uk> @dontYetKnow
 - Dmitry Medvinsky <me@dmedvinsky.name>
+- Bryce Boe <bbzbryce@gmail.com> @bboe
+- Colin Dunklau <colin.dunklau@gmail.com> @cdunklau
+- Hugo Osvaldo Barrera <hugo@osvaldobarrera.com.ar> @hobarrera
+- Łukasz Langa <lukasz@langa.pl> @llanga
+- Dave Shawley <daveshawley@gmail.com>

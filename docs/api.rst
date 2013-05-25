@@ -13,7 +13,7 @@ important right here and provide links to the canonical documentation.
 Main Interface
 --------------
 
-All of Request's functionality can be accessed by these 7 methods.
+All of Requests' functionality can be accessed by these 7 methods.
 They all return an instance of the :class:`Response <Response>` object.
 
 .. autofunction:: request
@@ -41,17 +41,18 @@ Request Sessions
 .. autoclass:: Session
    :inherited-members:
 
+.. autoclass:: requests.adapters.HTTPAdapter
+   :inherited-members:
+
 
 Exceptions
 ~~~~~~~~~~
 
-.. module:: requests
-
-.. autoexception:: RequestException
-.. autoexception:: ConnectionError
-.. autoexception:: HTTPError
-.. autoexception:: URLRequired
-.. autoexception:: TooManyRedirects
+.. autoexception:: requests.exceptions.RequestException
+.. autoexception:: requests.exceptions.ConnectionError
+.. autoexception:: requests.exceptions.HTTPError
+.. autoexception:: requests.exceptions.URLRequired
+.. autoexception:: requests.exceptions.TooManyRedirects
 
 
 Status Code Lookup
@@ -73,18 +74,17 @@ Status Code Lookup
 Cookies
 ~~~~~~~
 
-.. autofunction:: dict_from_cookiejar
-.. autofunction:: cookiejar_from_dict
-.. autofunction:: add_dict_to_cookiejar
+.. autofunction:: requests.utils.dict_from_cookiejar
+.. autofunction:: requests.utils.cookiejar_from_dict
+.. autofunction:: requests.utils.add_dict_to_cookiejar
 
 
 Encodings
 ~~~~~~~~~
 
-.. autofunction:: get_encodings_from_content
-.. autofunction:: get_encoding_from_headers
-.. autofunction:: get_unicode_from_response
-.. autofunction:: decode_gzip
+.. autofunction:: requests.utils.get_encodings_from_content
+.. autofunction:: requests.utils.get_encoding_from_headers
+.. autofunction:: requests.utils.get_unicode_from_response
 
 
 Classes
@@ -102,6 +102,9 @@ Classes
 .. _sessionapi:
 
 .. autoclass:: requests.Session
+   :inherited-members:
+
+.. autoclass:: requests.adapters.HTTPAdapter
    :inherited-members:
 
 
@@ -159,9 +162,23 @@ API Changes
 
   ::
 
-      # Verbosity should now be configured with logging
-      my_config = {'verbose': sys.stderr}
-      requests.get('http://httpbin.org/headers', config=my_config)  # bad!
+      import requests
+      import logging
+
+      # these two lines enable debugging at httplib level (requests->urllib3->httplib)
+      # you will see the REQUEST, including HEADERS and DATA, and RESPONSE with HEADERS but without DATA.
+      # the only thing missing will be the response.body which is not logged.
+      import httplib
+      httplib.HTTPConnection.debuglevel = 1
+      
+      logging.basicConfig() # you need to initialize logging, otherwise you will not see anything from requests
+      logging.getLogger().setLevel(logging.DEBUG)
+      requests_log = logging.getLogger("requests.packages.urllib3")
+      requests_log.setLevel(logging.DEBUG)
+      requests_log.propagate = True
+      
+      requests.get('http://httpbin.org/headers')
+
 
 
 Licensing
